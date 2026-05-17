@@ -55,7 +55,7 @@ Content-Type: application/json
 ### 2. Create holding
 POST http://localhost:3000/api/holdings
 Content-Type: application/json
-Authorization: Bearer.
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3OTAxNzk4NiwiZXhwIjoxNzc5MDE4NTg2fQ.r-j5oZRR8lp4dQqLs6KUTKO8wOrBBVdJdmCQYJ_PT60
 
 {
   "platform": "CommBank",
@@ -73,11 +73,11 @@ Authorization: Bearer.
 
 ### 3. Get all holdings
 GET http://localhost:3000/api/holdings
-Authorization: Bearer.
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3OTAxNzk4NiwiZXhwIjoxNzc5MDE4NTg2fQ.r-j5oZRR8lp4dQqLs6KUTKO8wOrBBVdJdmCQYJ_PT60
 
 ### 4. Get single holding — paste _id from response above
 GET http://localhost:3000/api/holdings/6a0958323dea954057170410
-Authorization: Bearer.
+Authorization: BearereyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3OTAxNzk4NiwiZXhwIjoxNzc5MDE4NTg2fQ.r-j5oZRR8lp4dQqLs6KUTKO8wOrBBVdJdmCQYJ_PT60
 
 ### 5. Update holding
 PUT http://localhost:3000/api/holdings/6a0958323dea954057170410
@@ -188,4 +188,25 @@ Authorization: Bearer .
   "exchange": "ASX",
   "action": "Hold",
   "priority": "Low"
+}
+
+
+### Get all portfolio prices
+GET http://localhost:3000/api/prices
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3OTAxODk3MywiZXhwIjoxNzc5MDE5NTczfQ.KibD8kqN29wwfE2iBA3yaOaJbrtZl3AgtL7M7nAADcM
+
+### Add a NEPSE holding
+POST http://localhost:3000/api/holdings
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3OTAxNzk4NiwiZXhwIjoxNzc5MDE4NTg2fQ.r-j5oZRR8lp4dQqLs6KUTKO8wOrBBVdJdmCQYJ_PT60
+
+{
+  "platform": "Meroshare",
+  "exchange": "NEPSE",
+  "currency": "NPR",
+  "ticker": "NABIL",
+  "name": "Nabil Bank",
+  "qty": 10,
+  "buyPrice": 850,
+  "purchaseDate": "2024-01-15"
 }
