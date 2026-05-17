@@ -1,0 +1,191 @@
+### Register
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{ "name": "Sagar", "email": "test@test.com", "password": "password123" }
+
+###  Login — copy the refreshToken from response
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{ "email": "test@test.com", "password": "password123" }
+
+### Refresh — paste refreshToken from login
+POST http://localhost:3000/api/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "c3219060f9386f4d5860a1a3f5d9934fa598d0895f8cc2e85eaee2a6e0d5498d359baf2e1312a7b60c03cf84f28e22cde43b18f00bceb4dc4a835fbde0ec85fd" }
+
+### Logout
+POST http://localhost:3000/api/auth/logout
+Content-Type: application/json
+
+{ "refreshToken": "c3219060f9386f4d5860a1a3f5d9934fa598d0895f8cc2e85eaee2a6e0d5498d359baf2e1312a7b60c03cf84f28e22cde43b18f00bceb4dc4a835fbde0ec85fd" }
+
+### 1. Login first — get accessToken
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{ "email": "test@test.com", "password": "password123" }
+
+### 2. Valid token — should return user data
+GET http://localhost:3000/api/test/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NTgxMiwiZXhwIjoxNzc4OTk2NzEyfQ.D1E3w_oxlJTYa0q2ZxIFtFFqMLj_xEz_Cd5WgKjzNkg
+
+### 3. No token — should return 401 "No token provided"
+GET http://localhost:3000/api/test/profile
+
+### 4. Garbage token — should return 401 "Not authorized, token failed"
+GET http://localhost:3000/api/test/profile
+Authorization: Bearer thisisnotavalidtoken
+
+### 5. Expired token — should return 401 "Not authorized, token failed"
+# To test this: temporarily change JWT_ACCESS_EXPIRES to "1s" in .env,
+# restart server, login, wait 2 seconds, then hit the route
+GET http://localhost:3000/api/test/profile
+Authorization: Bearer PASTE_TOKEN_FROM_1S_EXPIRY_TEST
+
+### HOLDINGS TEST 
+### 1. Login — get accessToken
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{ "email": "test@test.com", "password": "password123" }
+
+### 2. Create holding
+POST http://localhost:3000/api/holdings
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+
+{
+  "platform": "CommBank",
+  "exchange": "ASX",
+  "currency": "AUD",
+  "ticker": "CBA",
+  "name": "Commonwealth Bank",
+  "qty": 10,
+  "buyPrice": 120.50,
+  "purchaseDate": "2024-01-15",
+  "isFreeAllotment": false,
+  "isTracking": true,
+  "notes": "First holding"
+}
+
+### 3. Get all holdings
+GET http://localhost:3000/api/holdings
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+
+### 4. Get single holding — paste _id from response above
+GET http://localhost:3000/api/holdings/6a0958323dea954057170410
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+
+### 5. Update holding
+PUT http://localhost:3000/api/holdings/6a0958323dea954057170410
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+
+{
+  "qty": 15,
+  "notes": "Topped up"
+}
+
+### 6. Delete holding
+DELETE http://localhost:3000/api/holdings/6a0958323dea954057170410
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+
+### 7. Enum validation — should return 400
+POST http://localhost:3000/api/holdings
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+
+{
+  "platform": "Robinhood",
+  "exchange": "ASX",
+  "currency": "AUD",
+  "ticker": "CBA",
+  "name": "Commonwealth Bank",
+  "qty": 10,
+  "buyPrice": 120.50,
+  "purchaseDate": "2024-01-15"
+}
+
+### 8. No token — should return 401
+GET http://localhost:3000/api/holdings
+
+
+
+
+
+### WATCHLIST TESTING 
+### 1. Create watchlist item — no alert
+POST http://localhost:3000/api/watchlist
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+
+{
+  "symbol": "NABIL",
+  "exchange": "NEPSE",
+  "action": "Buy",
+  "priority": "High",
+  "notes": "Waiting for dip below 900"
+}
+
+### 2. Create watchlist item — with price alert
+POST http://localhost:3000/api/watchlist
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+
+{
+  "symbol": "A200",
+  "exchange": "ASX",
+  "action": "Buy",
+  "priority": "Medium",
+  "priceAlertThreshold": 95.00,
+  "alertDirection": "below"
+}
+
+### 3. Get all watchlist items
+GET http://localhost:3000/api/watchlist
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+
+### 4. Get single item — paste _id from above
+GET http://localhost:3000/api/watchlist/6a095ae96bb945c992c02072
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+
+### 5. Update — mark alert triggered
+PUT http://localhost:3000/api/watchlist/6a095ae96bb945c992c02072
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+
+{
+  "alertTriggered": true
+}
+
+### 6. Delete
+DELETE http://localhost:3000/api/watchlist/6a095ae96bb945c992c02072
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+
+### 7. Validation — alertDirection without threshold, should return 400
+POST http://localhost:3000/api/watchlist
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+
+{
+  "symbol": "CBA",
+  "exchange": "ASX",
+  "action": "Sell",
+  "priority": "Low",
+  "alertDirection": "above"
+}
+
+### 8. Validation — bad enum, should return 400
+POST http://localhost:3000/api/watchlist
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+
+{
+  "symbol": "CBA",
+  "exchange": "ASX",
+  "action": "Hold",
+  "priority": "Low"
+}
