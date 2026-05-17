@@ -14,13 +14,13 @@ Content-Type: application/json
 POST http://localhost:3000/api/auth/refresh
 Content-Type: application/json
 
-{ "refreshToken": "c3219060f9386f4d5860a1a3f5d9934fa598d0895f8cc2e85eaee2a6e0d5498d359baf2e1312a7b60c03cf84f28e22cde43b18f00bceb4dc4a835fbde0ec85fd" }
+{ "refreshToken": "." }
 
 ### Logout
 POST http://localhost:3000/api/auth/logout
 Content-Type: application/json
 
-{ "refreshToken": "c3219060f9386f4d5860a1a3f5d9934fa598d0895f8cc2e85eaee2a6e0d5498d359baf2e1312a7b60c03cf84f28e22cde43b18f00bceb4dc4a835fbde0ec85fd" }
+{ "refreshToken": "." }
 
 ### 1. Login first — get accessToken
 POST http://localhost:3000/api/auth/login
