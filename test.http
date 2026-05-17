@@ -30,7 +30,7 @@ Content-Type: application/json
 
 ### 2. Valid token — should return user data
 GET http://localhost:3000/api/test/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NTgxMiwiZXhwIjoxNzc4OTk2NzEyfQ.D1E3w_oxlJTYa0q2ZxIFtFFqMLj_xEz_Cd5WgKjzNkg
+Authorization: Bearer 
 
 ### 3. No token — should return 401 "No token provided"
 GET http://localhost:3000/api/test/profile
@@ -55,7 +55,7 @@ Content-Type: application/json
 ### 2. Create holding
 POST http://localhost:3000/api/holdings
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+Authorization: Bearer.
 
 {
   "platform": "CommBank",
@@ -73,16 +73,16 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M
 
 ### 3. Get all holdings
 GET http://localhost:3000/api/holdings
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+Authorization: Bearer.
 
 ### 4. Get single holding — paste _id from response above
 GET http://localhost:3000/api/holdings/6a0958323dea954057170410
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+Authorization: Bearer.
 
 ### 5. Update holding
 PUT http://localhost:3000/api/holdings/6a0958323dea954057170410
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+Authorization: Bearer.
 
 {
   "qty": 15,
@@ -91,12 +91,12 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M
 
 ### 6. Delete holding
 DELETE http://localhost:3000/api/holdings/6a0958323dea954057170410
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+Authorization: Bearer.
 
 ### 7. Enum validation — should return 400
 POST http://localhost:3000/api/holdings
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+Authorization: Bearer.
 
 {
   "platform": "Robinhood",
@@ -120,7 +120,7 @@ GET http://localhost:3000/api/holdings
 ### 1. Create watchlist item — no alert
 POST http://localhost:3000/api/watchlist
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5NzI3MywiZXhwIjoxNzc4OTk3ODczfQ.ikY7dY4KQLu-qShO2nMf9roCDUZTHjt3g0v2XUXv37w
+Authorization: Bearer.
 
 {
   "symbol": "NABIL",
