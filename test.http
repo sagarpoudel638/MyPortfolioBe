@@ -210,3 +210,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M
   "buyPrice": 850,
   "purchaseDate": "2024-01-15"
 }
+
+###
+GET http://localhost:3000/api/dashboard
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3OTAyNDExMSwiZXhwIjoxNzc5MDI0NzExfQ.RJs3M5qY-kguo-_qgk1qlEtKpsYy_vSRmEefTZ4E0fg
