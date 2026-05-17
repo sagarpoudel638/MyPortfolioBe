@@ -133,7 +133,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M
 ### 2. Create watchlist item — with price alert
 POST http://localhost:3000/api/watchlist
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+Authorization: Bearer .
 
 {
   "symbol": "A200",
@@ -146,16 +146,16 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M
 
 ### 3. Get all watchlist items
 GET http://localhost:3000/api/watchlist
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+Authorization: Bearer .
 
 ### 4. Get single item — paste _id from above
 GET http://localhost:3000/api/watchlist/6a095ae96bb945c992c02072
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+Authorization: Bearer .
 
 ### 5. Update — mark alert triggered
 PUT http://localhost:3000/api/watchlist/6a095ae96bb945c992c02072
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+Authorization: Bearer .
 
 {
   "alertTriggered": true
@@ -163,12 +163,12 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M
 
 ### 6. Delete
 DELETE http://localhost:3000/api/watchlist/6a095ae96bb945c992c02072
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+Authorization: Bearer .
 
 ### 7. Validation — alertDirection without threshold, should return 400
 POST http://localhost:3000/api/watchlist
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+Authorization: Bearer .
 
 {
   "symbol": "CBA",
@@ -181,7 +181,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M
 ### 8. Validation — bad enum, should return 400
 POST http://localhost:3000/api/watchlist
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3ODk5Nzk2MiwiZXhwIjoxNzc4OTk4NTYyfQ.79pP-SzG63mIQaI_oSEuRyVVTPbI7obtJFPJuCMQuMU
+Authorization: Bearer .
 
 {
   "symbol": "CBA",
