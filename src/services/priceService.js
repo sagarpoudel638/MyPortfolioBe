@@ -6,6 +6,7 @@ const yahooFinance = new YahooFinance({
 import axios from "axios";
 import * as cheerio from "cheerio";
 import PriceCache, { parseCacheEntry } from "../models/PriceCache.js";
+import { getCacheTtl, isMarketOpen } from "./tradingHours.js";
 
 // ── Yahoo Finance fetcher (ASX + US) ─────────────────────────────────────────
 const fetchYahooPrice = async (ticker, exchange) => {
@@ -87,11 +88,11 @@ const fetchNepsePrice = async (ticker) => {
   };
 };
 
-// ── Core: get price for one ticker (cache-first) ─────────────────────────────
+// Update getPrice function — replace the cache check section
 export const getPrice = async (ticker, exchange) => {
   const cacheKey = `${exchange}:${ticker}`;
 
-  // 1. Check cache first
+  // 1. Check cache
   const cached = await PriceCache.findById(cacheKey);
   if (cached) {
     return parseCacheEntry(cached);
@@ -106,12 +107,14 @@ export const getPrice = async (ticker, exchange) => {
       priceData = await fetchYahooPrice(ticker, exchange);
     }
   } catch (error) {
-    throw new Error(
-      `Failed to fetch price for ${exchange}:${ticker} — ${error.message}`
-    );
+    throw new Error(`Failed to fetch price for ${exchange}:${ticker} — ${error.message}`);
   }
 
-  // 3. Upsert into cache
+  // 3. Compute expiry based on trading hours
+  const ttlSeconds = getCacheTtl(exchange);
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+  // 4. Upsert into cache
   const doc = await PriceCache.findByIdAndUpdate(
     cacheKey,
     {
@@ -120,8 +123,9 @@ export const getPrice = async (ticker, exchange) => {
       ticker,
       ...priceData,
       fetchedAt: new Date(),
+      expiresAt,
     },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: "after" }
   );
 
   return parseCacheEntry(doc);
@@ -173,12 +177,14 @@ export const getPrices = async (tickerList) => {
           lastTraded: quote.regularMarketTime ?? null,
         };
 
-        const doc = await PriceCache.findByIdAndUpdate(
-          cacheKey,
-          { _id: cacheKey, exchange, ticker, ...priceData, fetchedAt: new Date() },
-          { upsert: true, new: true }
-        );
+       const ttlSeconds = getCacheTtl(exchange);
+const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
+const doc = await PriceCache.findByIdAndUpdate(
+  cacheKey,
+  { _id: cacheKey, exchange, ticker, ...priceData, fetchedAt: new Date(), expiresAt },
+  { upsert: true, returnDocument: "after" }
+);
         results[cacheKey] = parseCacheEntry(doc);
       }
     } catch (error) {
@@ -194,11 +200,14 @@ export const getPrices = async (tickerList) => {
     const cacheKey = `${exchange}:${ticker}`;
     try {
       const priceData = await fetchNepsePrice(ticker);
-      const doc = await PriceCache.findByIdAndUpdate(
-        cacheKey,
-        { _id: cacheKey, exchange, ticker, ...priceData, fetchedAt: new Date() },
-        { upsert: true, new: true }
-      );
+      const ttlSeconds = getCacheTtl(exchange);
+const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+const doc = await PriceCache.findByIdAndUpdate(
+  cacheKey,
+  { _id: cacheKey, exchange, ticker, ...priceData, fetchedAt: new Date(), expiresAt },
+  { upsert: true, returnDocument: "after" }
+);
       results[cacheKey] = parseCacheEntry(doc);
     } catch (error) {
       // Individual failure — don't crash others

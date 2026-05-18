@@ -97,6 +97,7 @@ export const getDashboard = async (req, res) => {
         holdingsList.push({
           _id: h._id,
           symbol: h.ticker,
+          exchange: h.exchange,
           name: h.name,
           qty,
           buyPrice,

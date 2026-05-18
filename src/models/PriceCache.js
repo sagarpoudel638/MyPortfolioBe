@@ -46,9 +46,14 @@ const priceCacheSchema = new mongoose.Schema(
     },
 
     fetchedAt: {
-      type: Date,
-      default: Date.now,
-    },
+  type: Date,
+  default: Date.now,
+},
+
+expiresAt: {
+  type: Date,
+  default: () => new Date(Date.now() + 3600 * 1000), // default 1 hour
+},
   },
   {
     timestamps: false, // fetchedAt handles this manually
@@ -56,8 +61,7 @@ const priceCacheSchema = new mongoose.Schema(
   }
 );
 
-// TTL index — MongoDB auto-deletes documents 15 min after fetchedAt
-priceCacheSchema.index({ fetchedAt: 1 }, { expireAfterSeconds: 900 });
+priceCacheSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // ── Helper: parse Decimal128 fields ─────────────────────────────────────────
 export const parseCacheEntry = (doc) => ({

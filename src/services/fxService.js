@@ -1,15 +1,17 @@
 // services/fxService.js
 import axios from "axios";
+import { getFxCacheDuration } from "./tradingHours.js";
 
 let fxCache = {
   rates: null,
   fetchedAt: null,
 };
 
-const CACHE_DURATION_MS = 15 * 60 * 1000;
+// const CACHE_DURATION_MS = 15 * 60 * 1000;
 
 export const getFxRates = async (baseCurrency = "AUD") => {
   const now = Date.now();
+  const CACHE_DURATION_MS = getFxCacheDuration(); // dynamic per trading hours
 
   if (
     fxCache.rates &&

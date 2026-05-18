@@ -1,5 +1,6 @@
 // controllers/watchlistController.js
 import Watchlist from "../models/Watchlist.js";
+import { getPrices } from "../services/priceService.js";
 
 // ── Helper ───────────────────────────────────────────────────────────────────
 const parseItem = (item) => {
@@ -39,6 +40,31 @@ export const getWatchlistItemById = async (req, res) => {
     }
 
     res.json(parseItem(item));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET /api/watchlist/prices
+export const getWatchlistPrices = async (req, res) => {
+  try {
+    const items = await Watchlist.find({ userId: req.user._id });
+
+    if (items.length === 0) return res.json({});
+
+    // Deduplicate
+    const seen = new Set();
+    const tickerList = [];
+    for (const item of items) {
+      const key = `${item.exchange}:${item.symbol}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        tickerList.push({ ticker: item.symbol, exchange: item.exchange });
+      }
+    }
+
+    const prices = await getPrices(tickerList);
+    res.json(prices);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

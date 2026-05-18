@@ -44,6 +44,20 @@ const userSchema = new mongoose.Schema(
       priceAlerts:     { type: Boolean, default: true },
       dailySummary:    { type: Boolean, default: false },
     },
+    isVerified: {
+  type: Boolean,
+  default: false,
+},
+
+verifyToken: {
+  type: String,
+  default: null,
+},
+
+verifyTokenExpiry: {
+  type: Date,
+  default: null,
+},
   },
   { timestamps: true }
 );
