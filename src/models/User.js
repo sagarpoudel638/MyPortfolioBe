@@ -57,7 +57,15 @@ verifyToken: {
 verifyTokenExpiry: {
   type: Date,
   default: null,
+},resetToken: {
+  type: String,
+  default: null,
 },
+
+resetTokenExpiry: {
+  type: Date,
+  default: null,
+}
   },
   { timestamps: true }
 );
