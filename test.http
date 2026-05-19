@@ -11,6 +11,12 @@ Content-Type: application/json
 { "email": "test@test.com", "password": "password123" }
 
 ### Refresh — paste refreshToken from login
+GET http://localhost:3000/api/dashboard
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3OTE4MzA0NCwiZXhwIjoxNzc5MTgzNjQ0fQ.XAi_TZW0dxGbmWTM0C4J-PG7RpEyhoTefPzcWpl8piw
+###
+GET http://localhost:3000/api/prices/market-status
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDk1MjA5M2Q2MGNmMmQ2NDMyNDRjNyIsImlhdCI6MTc3OTE4MzA0NCwiZXhwIjoxNzc5MTgzNjQ0fQ.XAi_TZW0dxGbmWTM0C4J-PG7RpEyhoTefPzcWpl8piw
+###
 POST http://localhost:3000/api/auth/refresh
 Content-Type: application/json
 

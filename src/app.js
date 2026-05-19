@@ -8,6 +8,7 @@ import testRoutes from "./routes/testRoutes.js";
 import watchlistRoutes from "./routes/watchlistRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import fxRoutes from "./routes/fxRoutes.js";
+import snapshotRoutes from "./routes/snapshotRoutes.js";
 const app = express();
 
 app.use(cors());
@@ -21,7 +22,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/holdings", holdingRoutes);
 app.use("/api/watchlist", watchlistRoutes);
 app.use("/api/prices", priceRoutes);
-
+app.use("/api/snapshots", snapshotRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/fx", fxRoutes);

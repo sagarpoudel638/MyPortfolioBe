@@ -98,6 +98,7 @@ export const getDashboard = async (req, res) => {
           _id: h._id,
           symbol: h.ticker,
           exchange: h.exchange,
+          sector: priceData?.sector || null,
           name: h.name,
           qty,
           buyPrice,
@@ -149,15 +150,21 @@ export const getDashboard = async (req, res) => {
         : null;
 
     res.json({
-      platforms,
-      overall: {
-        currency: user.baseCurrency || "AUD",
-        invested: parseFloat(overallInvestedAUD.toFixed(2)),
-        current: parseFloat(overallCurrentAUD.toFixed(2)),
-        profit: overallProfit,
-        returnPercent: overallReturn,
-      },
-    });
+  platforms,
+  overall: {
+    currency: user.baseCurrency || "AUD",
+    invested: parseFloat(overallInvestedAUD.toFixed(2)),
+    current:  parseFloat(overallCurrentAUD.toFixed(2)),
+    profit:   overallProfit,
+    returnPercent: overallReturn,
+  },
+  fxRates: {
+  audToUsd: parseFloat((fxRates["USD"]).toFixed(4)),        // 1 AUD = X USD
+  audToNpr: parseFloat((fxRates["NPR"]).toFixed(4)),        // 1 AUD = X NPR
+  usdToAud: parseFloat((1 / fxRates["USD"]).toFixed(4)),    // 1 USD = X AUD
+  nprToAud: parseFloat((1 / fxRates["NPR"]).toFixed(6)),    // 1 NPR = X AUD
+},
+});
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

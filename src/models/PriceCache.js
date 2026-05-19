@@ -12,6 +12,10 @@ const priceCacheSchema = new mongoose.Schema(
       enum: ["ASX", "NYSE", "NASDAQ", "NEPSE"],
       required: true,
     },
+    sector: {
+  type: String,
+  default: null,
+},
 
     ticker: {
       type: String,
@@ -74,6 +78,7 @@ export const parseCacheEntry = (doc) => ({
   weeklyLow52: doc.weeklyLow52 ? parseFloat(doc.weeklyLow52) : null,
   lastTraded: doc.lastTraded,
   fetchedAt: doc.fetchedAt,
+  sector: doc.sector || null, // ← add this
 });
 
 export default mongoose.model("PriceCache", priceCacheSchema);
