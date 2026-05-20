@@ -9,6 +9,8 @@ import watchlistRoutes from "./routes/watchlistRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import fxRoutes from "./routes/fxRoutes.js";
 import snapshotRoutes from "./routes/snapshotRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
+
 const app = express();
 
 app.use(cors());
@@ -26,6 +28,7 @@ app.use("/api/snapshots", snapshotRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/fx", fxRoutes);
+app.use("/api/settings", settingsRoutes);
 
 
 export default app;
