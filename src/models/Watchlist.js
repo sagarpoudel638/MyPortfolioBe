@@ -55,6 +55,10 @@ const watchlistSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    plannedQty: {
+  type: mongoose.Schema.Types.Decimal128,
+  default: null,
+},
   },
   { timestamps: true }
 );
