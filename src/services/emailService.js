@@ -9,6 +9,7 @@ export const sendVerificationEmail = async (toEmail, name, token) => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    family: 4, // ← force IPv4
   });
 
   const verifyUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
@@ -46,6 +47,7 @@ export const sendPasswordResetEmail = async (toEmail, name, token) => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    family: 4, // ← force IPv4
   });
 
   const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
