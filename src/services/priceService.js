@@ -1,41 +1,101 @@
 // services/priceService.js
-import YahooFinance from "yahoo-finance2";
 import axios from "axios";
 import * as cheerio from "cheerio";
 import https from "https";
 import PriceCache, { parseCacheEntry } from "../models/PriceCache.js";
 import { getCacheTtl } from "./tradingHours.js";
 
-const yahooFinance = new YahooFinance({
-  suppressNotices: ["yahooSurvey"],
-  validation: {
-    logErrors: false,
-    logOptionsErrors: false,
-  },
-});
-
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-// ── Yahoo Finance fetcher (ASX + US) ─────────────────────────────────────────
-const fetchYahooPrice = async (ticker, exchange, retries = 3) => {
-  const yahooSymbol = exchange === "ASX" ? `${ticker}.AX` : ticker;
+const ASX_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-AU,en;q=0.9",
+};
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const quote = await yahooFinance.quote(yahooSymbol);
-      return {
-        price:        quote.regularMarketPrice,
-        dayPercent:   quote.regularMarketChangePercent ?? null,
-        weeklyHigh52: quote.fiftyTwoWeekHigh ?? null,
-        weeklyLow52:  quote.fiftyTwoWeekLow ?? null,
-        lastTraded:   quote.regularMarketTime ?? null,
-        sector:       null,
-      };
-    } catch (error) {
-      if (attempt === retries) throw error;
-      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+// ── ASX scraper (stockanalysis.com) ──────────────────────────────────────────
+const fetchASXPrice = async (ticker) => {
+  const { data } = await axios.get(
+    `https://stockanalysis.com/quote/asx/${ticker}/`,
+    { headers: ASX_HEADERS, timeout: 15000 }
+  );
+
+  const $ = cheerio.load(data);
+
+  let scriptText = "";
+  $("script").each((i, el) => {
+    const text = $(el).html() || "";
+    if (text.includes("h52")) {
+      scriptText = text;
+      return false;
     }
+  });
+
+  if (!scriptText) {
+    throw new Error(`Could not find price data for ASX:${ticker}`);
   }
+
+  const extract = (key) => {
+    const match = scriptText.match(new RegExp(`${key}:([-\\d.]+)`));
+    return match ? parseFloat(match[1]) : null;
+  };
+
+  const extractStr = (key) => {
+    const match = scriptText.match(new RegExp(`${key}:"([^"]+)"`));
+    return match ? match[1] : null;
+  };
+
+  const price = extract("pd");
+  if (!price) throw new Error(`Could not parse price for ASX:${ticker}`);
+
+  return {
+    price,
+    dayPercent:   extract("cp"),
+    weeklyHigh52: extract("h52"),
+    weeklyLow52:  extract("l52"),
+    lastTraded:   extractStr("td") ? new Date(extractStr("td")) : new Date(),
+    sector:       null,
+  };
+};
+
+// ── Tiingo fetcher (US — NYSE/NASDAQ) ─────────────────────────────────────────
+const fetchTiingoPrice = async (ticker) => {
+  const apiKey = process.env.TIINGO_API_KEY;
+
+  const { data: daily } = await axios.get(
+    `https://api.tiingo.com/tiingo/daily/${ticker.toLowerCase()}/prices`,
+    {
+      headers: { Authorization: `Token ${apiKey}` },
+      params: {
+        startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+          .toISOString().split("T")[0],
+      },
+      timeout: 15000,
+    }
+  );
+
+  if (!daily || daily.length === 0) {
+    throw new Error(`No data returned for ${ticker}`);
+  }
+
+  const latest = daily[daily.length - 1];
+  const prev   = daily.length > 1 ? daily[daily.length - 2] : null;
+
+  const highs = daily.map((d) => d.high).filter(Boolean);
+  const lows  = daily.map((d) => d.low).filter(Boolean);
+
+  const dayPercent = prev?.close && latest?.close
+    ? parseFloat((((latest.close - prev.close) / prev.close) * 100).toFixed(2))
+    : null;
+
+  return {
+    price:        latest.close,
+    dayPercent,
+    weeklyHigh52: highs.length > 0 ? Math.max(...highs) : null,
+    weeklyLow52:  lows.length  > 0 ? Math.min(...lows)  : null,
+    lastTraded:   new Date(latest.date),
+    sector:       null,
+  };
 };
 
 // ── Merolagani scraper (NEPSE) ────────────────────────────────────────────────
@@ -74,10 +134,7 @@ const fetchNepsePrice = async (ticker) => {
   const sectorText     = getTdByTh("Sector");
 
   const price = cleanNumber(priceText);
-
-  if (!price) {
-    throw new Error(`Could not parse price for NEPSE:${ticker}`);
-  }
+  if (!price) throw new Error(`Could not parse price for NEPSE:${ticker}`);
 
   let weeklyHigh52 = null;
   let weeklyLow52  = null;
@@ -90,21 +147,49 @@ const fetchNepsePrice = async (ticker) => {
     }
   }
 
-  const lastTraded = lastTradedText
-    ? new Date(lastTradedText.replace(/\//g, "-"))
-    : new Date();
-
   return {
     price,
     dayPercent:   cleanNumber(dayPercentText),
     weeklyHigh52,
     weeklyLow52,
-    lastTraded,
-    sector:       sectorText || null,
+    lastTraded:   lastTradedText
+      ? new Date(lastTradedText.replace(/\//g, "-"))
+      : new Date(),
+    sector: sectorText || null,
   };
 };
 
-// ── Core: get price for one ticker (cache-first) ─────────────────────────────
+// ── Route fetch by exchange ───────────────────────────────────────────────────
+const fetchPrice = async (ticker, exchange) => {
+  if (exchange === "NEPSE") return fetchNepsePrice(ticker);
+  if (exchange === "ASX")   return fetchASXPrice(ticker);
+  return fetchTiingoPrice(ticker); // NYSE, NASDAQ
+};
+
+// ── Scheduled fetch — called by cron jobs in server.js ───────────────────────
+export const scheduledPriceFetch = async (tickerList) => {
+  for (const { ticker, exchange } of tickerList) {
+    const cacheKey = `${exchange}:${ticker}`;
+    try {
+      const priceData  = await fetchPrice(ticker, exchange);
+      const ttlSeconds = getCacheTtl(exchange);
+      const expiresAt  = new Date(Date.now() + ttlSeconds * 1000);
+
+      await PriceCache.findByIdAndUpdate(
+        cacheKey,
+        { _id: cacheKey, exchange, ticker, ...priceData, fetchedAt: new Date(), expiresAt },
+        { upsert: true, returnDocument: "after" }
+      );
+
+      console.log(`[Price] ✅ ${cacheKey}: ${priceData.price}`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } catch (error) {
+      console.error(`[Price] ❌ ${cacheKey}:`, error.message);
+    }
+  }
+};
+
+// ── Core: get price for one ticker (cache-first) ──────────────────────────────
 export const getPrice = async (ticker, exchange) => {
   const cacheKey = `${exchange}:${ticker}`;
 
@@ -113,11 +198,7 @@ export const getPrice = async (ticker, exchange) => {
 
   let priceData;
   try {
-    if (exchange === "NEPSE") {
-      priceData = await fetchNepsePrice(ticker);
-    } else {
-      priceData = await fetchYahooPrice(ticker, exchange);
-    }
+    priceData = await fetchPrice(ticker, exchange);
   } catch (error) {
     throw new Error(`Failed to fetch price for ${exchange}:${ticker} — ${error.message}`);
   }
@@ -127,21 +208,14 @@ export const getPrice = async (ticker, exchange) => {
 
   const doc = await PriceCache.findByIdAndUpdate(
     cacheKey,
-    {
-      _id: cacheKey,
-      exchange,
-      ticker,
-      ...priceData,
-      fetchedAt: new Date(),
-      expiresAt,
-    },
+    { _id: cacheKey, exchange, ticker, ...priceData, fetchedAt: new Date(), expiresAt },
     { upsert: true, returnDocument: "after" }
   );
 
   return parseCacheEntry(doc);
 };
 
-// ── Batch: get prices for multiple tickers ───────────────────────────────────
+// ── Batch: get prices for multiple tickers (cache-first) ─────────────────────
 export const getPrices = async (tickerList) => {
   const cacheKeys = tickerList.map(({ ticker, exchange }) => `${exchange}:${ticker}`);
 
@@ -154,42 +228,12 @@ export const getPrices = async (tickerList) => {
     ({ ticker, exchange }) => !cachedMap[`${exchange}:${ticker}`]
   );
 
-  const yahooMissing = missing.filter((t) => t.exchange !== "NEPSE");
-  const nepseMissing = missing.filter((t) => t.exchange === "NEPSE");
-
   const results = { ...cachedMap };
 
-  // ── Yahoo individual fetches with delay ───────────────────────────────────
-  if (yahooMissing.length > 0) {
-    for (const { ticker, exchange } of yahooMissing) {
-      const cacheKey = `${exchange}:${ticker}`;
-      try {
-        const priceData  = await fetchYahooPrice(ticker, exchange);
-        const ttlSeconds = getCacheTtl(exchange);
-        const expiresAt  = new Date(Date.now() + ttlSeconds * 1000);
-
-        const doc = await PriceCache.findByIdAndUpdate(
-          cacheKey,
-          { _id: cacheKey, exchange, ticker, ...priceData, fetchedAt: new Date(), expiresAt },
-          { upsert: true, returnDocument: "after" }
-        );
-
-        results[cacheKey] = parseCacheEntry(doc);
-
-        // Delay between requests to avoid rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } catch (error) {
-        console.error(`Yahoo fetch failed for ${ticker}:`, error.message);
-        results[cacheKey] = null;
-      }
-    }
-  }
-
-  // ── NEPSE individual fetches ──────────────────────────────────────────────
-  for (const { ticker, exchange } of nepseMissing) {
+  for (const { ticker, exchange } of missing) {
     const cacheKey = `${exchange}:${ticker}`;
     try {
-      const priceData  = await fetchNepsePrice(ticker);
+      const priceData  = await fetchPrice(ticker, exchange);
       const ttlSeconds = getCacheTtl(exchange);
       const expiresAt  = new Date(Date.now() + ttlSeconds * 1000);
 
@@ -200,8 +244,9 @@ export const getPrices = async (tickerList) => {
       );
 
       results[cacheKey] = parseCacheEntry(doc);
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
-      console.error(`NEPSE fetch failed for ${ticker}:`, error.message);
+      console.error(`Fetch failed for ${cacheKey}:`, error.message);
       results[cacheKey] = null;
     }
   }
