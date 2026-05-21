@@ -8,23 +8,34 @@ import { getCacheTtl } from "./tradingHours.js";
 
 const yahooFinance = new YahooFinance({
   suppressNotices: ["yahooSurvey"],
+  validation: {
+    logErrors: false,
+    logOptionsErrors: false,
+  },
 });
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 // ── Yahoo Finance fetcher (ASX + US) ─────────────────────────────────────────
-const fetchYahooPrice = async (ticker, exchange) => {
+const fetchYahooPrice = async (ticker, exchange, retries = 3) => {
   const yahooSymbol = exchange === "ASX" ? `${ticker}.AX` : ticker;
-  const quote = await yahooFinance.quote(yahooSymbol);
 
-  return {
-    price:        quote.regularMarketPrice,
-    dayPercent:   quote.regularMarketChangePercent ?? null,
-    weeklyHigh52: quote.fiftyTwoWeekHigh ?? null,
-    weeklyLow52:  quote.fiftyTwoWeekLow ?? null,
-    lastTraded:   quote.regularMarketTime ?? null,
-    sector:       null,
-  };
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const quote = await yahooFinance.quote(yahooSymbol);
+      return {
+        price:        quote.regularMarketPrice,
+        dayPercent:   quote.regularMarketChangePercent ?? null,
+        weeklyHigh52: quote.fiftyTwoWeekHigh ?? null,
+        weeklyLow52:  quote.fiftyTwoWeekLow ?? null,
+        lastTraded:   quote.regularMarketTime ?? null,
+        sector:       null,
+      };
+    } catch (error) {
+      if (attempt === retries) throw error;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
+  }
 };
 
 // ── Merolagani scraper (NEPSE) ────────────────────────────────────────────────
@@ -41,7 +52,6 @@ const fetchNepsePrice = async (ticker) => {
 
   const $ = cheerio.load(data);
 
-  // ── Define getTdByTh BEFORE using it ─────────────────────────────────────
   const getTdByTh = (thText) => {
     let value = null;
     $("tr").each((i, row) => {
@@ -61,7 +71,7 @@ const fetchNepsePrice = async (ticker) => {
   const dayPercentText = getTdByTh("% Change");
   const high52Text     = getTdByTh("52 Weeks High - Low");
   const lastTradedText = getTdByTh("Last Traded On");
-  const sectorText     = getTdByTh("Sector"); // ← moved AFTER getTdByTh definition
+  const sectorText     = getTdByTh("Sector");
 
   const price = cleanNumber(priceText);
 
@@ -90,7 +100,7 @@ const fetchNepsePrice = async (ticker) => {
     weeklyHigh52,
     weeklyLow52,
     lastTraded,
-    sector:       sectorText || null, // ← sector is part of priceData
+    sector:       sectorText || null,
   };
 };
 
@@ -121,7 +131,7 @@ export const getPrice = async (ticker, exchange) => {
       _id: cacheKey,
       exchange,
       ticker,
-      ...priceData, // sector is inside priceData — no need to spread separately
+      ...priceData,
       fetchedAt: new Date(),
       expiresAt,
     },
@@ -149,30 +159,12 @@ export const getPrices = async (tickerList) => {
 
   const results = { ...cachedMap };
 
-  // Yahoo batch fetch
+  // ── Yahoo individual fetches with delay ───────────────────────────────────
   if (yahooMissing.length > 0) {
-    const symbols = yahooMissing.map(({ ticker, exchange }) =>
-      exchange === "ASX" ? `${ticker}.AX` : ticker
-    );
-
-    try {
-      const quotes      = await yahooFinance.quote(symbols);
-      const quotesArray = Array.isArray(quotes) ? quotes : [quotes];
-
-      for (let i = 0; i < yahooMissing.length; i++) {
-        const { ticker, exchange } = yahooMissing[i];
-        const quote    = quotesArray[i];
-        const cacheKey = `${exchange}:${ticker}`;
-
-        const priceData = {
-          price:        quote.regularMarketPrice,
-          dayPercent:   quote.regularMarketChangePercent ?? null,
-          weeklyHigh52: quote.fiftyTwoWeekHigh ?? null,
-          weeklyLow52:  quote.fiftyTwoWeekLow ?? null,
-          lastTraded:   quote.regularMarketTime ?? null,
-          sector:       null,
-        };
-
+    for (const { ticker, exchange } of yahooMissing) {
+      const cacheKey = `${exchange}:${ticker}`;
+      try {
+        const priceData  = await fetchYahooPrice(ticker, exchange);
         const ttlSeconds = getCacheTtl(exchange);
         const expiresAt  = new Date(Date.now() + ttlSeconds * 1000);
 
@@ -183,16 +175,17 @@ export const getPrices = async (tickerList) => {
         );
 
         results[cacheKey] = parseCacheEntry(doc);
-      }
-    } catch (error) {
-      console.error("Yahoo batch fetch failed:", error.message);
-      for (const { ticker, exchange } of yahooMissing) {
-        results[`${exchange}:${ticker}`] = null;
+
+        // Delay between requests to avoid rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error(`Yahoo fetch failed for ${ticker}:`, error.message);
+        results[cacheKey] = null;
       }
     }
   }
 
-  // NEPSE individual fetches
+  // ── NEPSE individual fetches ──────────────────────────────────────────────
   for (const { ticker, exchange } of nepseMissing) {
     const cacheKey = `${exchange}:${ticker}`;
     try {
