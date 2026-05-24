@@ -2,7 +2,7 @@
 import express from "express";
 import { getPortfolioPrices } from "../controllers/priceController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import { isMarketOpen, getCacheTtl, getFxCacheDuration } from "../services/tradingHours.js";
+import { isMarketOpen, getCacheTtl, getFxCacheDuration, getMarketStatus } from "../services/tradingHours.js";
 import { DateTime } from "luxon";
 const router = express.Router();
 
@@ -37,4 +37,24 @@ router.get("/market-status", protect, (req, res) => {
   });
 });
 
+router.get("/market-status", protect, (req, res) => {
+  const markets = [
+    { label: "ASX",   exchanges: ["ASX"]            },
+    { label: "NYSE",  exchanges: ["NYSE", "NASDAQ"]  },
+    { label: "NEPSE", exchanges: ["NEPSE"]           },
+  ];
+
+  const status = markets.map(({ label, exchanges }) => {
+    // Use first exchange for status (NYSE and NASDAQ same hours)
+    const s = getMarketStatus(exchanges[0]);
+    return {
+      label,
+      isOpen:         s.isOpen,
+      nextEventMs:    s.nextEventMs,
+      nextEventLabel: s.nextEventLabel,
+    };
+  });
+
+  res.json(status);
+});
 export default router;
