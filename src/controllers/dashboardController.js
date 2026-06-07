@@ -3,18 +3,11 @@ import Holding from "../models/Holding.js";
 import { getPrices } from "../services/priceService.js";
 import { getFxRates, toAUD } from "../services/fxService.js";
 
-const PLATFORM_KEY = {
-  CommBank:      "commbank",
-  CommSecPocket: "commsecpocket",
-  Webull:        "webull",
-  Meroshare:     "meroshare",
-};
-
-const PLATFORM_META = {
-  CommBank:      { name: "CommBank",       market: "ASX",   currency: "AUD" },
-  CommSecPocket: { name: "CommSec Pocket", market: "ASX",   currency: "AUD" },
-  Webull:        { name: "Webull",         market: "US",    currency: "USD" },
-  Meroshare:     { name: "Meroshare",      market: "NEPSE", currency: "NPR" },
+const MARKET_META = {
+  ASX:    { name: "ASX",    currency: "AUD" },
+  NYSE:   { name: "NYSE",   currency: "USD" },
+  NASDAQ: { name: "NASDAQ", currency: "USD" },
+  NEPSE:  { name: "NEPSE",  currency: "NPR" },
 };
 
 export const getDashboard = async (req, res) => {
@@ -28,7 +21,7 @@ export const getDashboard = async (req, res) => {
     });
 
     if (holdings.length === 0) {
-      return res.json({ platforms: {}, overall: null });
+      return res.json({ markets: {}, overall: null });
     }
 
     // 2. Build deduplicated ticker list
@@ -48,27 +41,27 @@ export const getDashboard = async (req, res) => {
       getFxRates(user.baseCurrency || "AUD"),
     ]);
 
-    // 4. Group by platform
+    // 4. Group by market (exchange)
     const grouped = {};
     for (const h of holdings) {
-      if (!grouped[h.platform]) grouped[h.platform] = [];
-      grouped[h.platform].push(h);
+      if (!grouped[h.exchange]) grouped[h.exchange] = [];
+      grouped[h.exchange].push(h);
     }
 
     // 5. Build response
-    const platforms = {};
+    const markets = {};
     let overallInvestedAUD = 0;
     let overallCurrentAUD = 0;
 
-    for (const [platform, platformHoldings] of Object.entries(grouped)) {
-      const meta = PLATFORM_META[platform];
+    for (const [market, marketHoldings] of Object.entries(grouped)) {
+      const meta = MARKET_META[market];
       const currency = meta?.currency || "AUD";
 
-      let platformInvested = 0;
-      let platformCurrent = 0;
+      let marketInvested = 0;
+      let marketCurrent = 0;
       const holdingsList = [];
 
-      for (const h of platformHoldings) {
+      for (const h of marketHoldings) {
         const cacheKey = `${h.exchange}:${h.ticker}`;
         const priceData = prices[cacheKey];
 
@@ -91,13 +84,14 @@ export const getDashboard = async (req, res) => {
             ? parseFloat((((value - invested) / invested) * 100).toFixed(2))
             : null;
 
-        if (!h.isFreeAllotment) platformInvested += invested;
-        if (value !== null) platformCurrent += value;
+        if (!h.isFreeAllotment) marketInvested += invested;
+        if (value !== null) marketCurrent += value;
 
         holdingsList.push({
           _id: h._id,
           symbol: h.ticker,
           exchange: h.exchange,
+          broker: h.broker || null,
           sector: priceData?.sector || null,
           name: h.name,
           qty,
@@ -117,24 +111,23 @@ export const getDashboard = async (req, res) => {
         });
       }
 
-      const platformProfit = parseFloat((platformCurrent - platformInvested).toFixed(2));
-      const platformReturn =
-        platformInvested > 0
-          ? parseFloat((((platformCurrent - platformInvested) / platformInvested) * 100).toFixed(2))
+      const marketProfit = parseFloat((marketCurrent - marketInvested).toFixed(2));
+      const marketReturn =
+        marketInvested > 0
+          ? parseFloat((((marketCurrent - marketInvested) / marketInvested) * 100).toFixed(2))
           : null;
 
-      overallInvestedAUD += toAUD(platformInvested, currency, fxRates);
-      overallCurrentAUD += toAUD(platformCurrent, currency, fxRates);
+      overallInvestedAUD += toAUD(marketInvested, currency, fxRates);
+      overallCurrentAUD += toAUD(marketCurrent, currency, fxRates);
 
-      platforms[PLATFORM_KEY[platform] || platform.toLowerCase()] = {
-        name: meta?.name || platform,
-        market: meta?.market || "—",
+      markets[market.toLowerCase()] = {
+        name: meta?.name || market,
         currency,
         summary: {
-          invested: parseFloat(platformInvested.toFixed(2)),
-          current: parseFloat(platformCurrent.toFixed(2)),
-          profit: platformProfit,
-          returnPercent: platformReturn,
+          invested: parseFloat(marketInvested.toFixed(2)),
+          current: parseFloat(marketCurrent.toFixed(2)),
+          profit: marketProfit,
+          returnPercent: marketReturn,
         },
         holdings: holdingsList,
       };
@@ -150,7 +143,7 @@ export const getDashboard = async (req, res) => {
         : null;
 
     res.json({
-  platforms,
+  markets,
   overall: {
     currency: user.baseCurrency || "AUD",
     invested: parseFloat(overallInvestedAUD.toFixed(2)),

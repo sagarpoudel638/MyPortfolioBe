@@ -53,7 +53,7 @@ export const getHoldingById = async (req, res) => {
 export const createHolding = async (req, res) => {
   try {
     const {
-      platform,
+      broker,
       exchange,
       currency,
       ticker,
@@ -69,7 +69,7 @@ export const createHolding = async (req, res) => {
 
     const holding = await Holding.create({
       userId: req.user._id,
-      platform,
+      broker: broker || "",
       exchange,
       currency,
       ticker,
@@ -107,7 +107,7 @@ export const updateHolding = async (req, res) => {
     }
 
     const allowedFields = [
-      "platform",
+      "broker",
       "exchange",
       "currency",
       "ticker",

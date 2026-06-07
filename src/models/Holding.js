@@ -9,10 +9,10 @@ const holdingSchema = new mongoose.Schema(
       required: true,
     },
 
-    platform: {
+    broker: {
       type: String,
-      enum: ["CommBank", "CommSecPocket", "Webull", "Meroshare"],
-      required: true,
+      default: "",
+      trim: true, // optional — e.g. "CommBank", "Webull", "Meroshare"
     },
 
     exchange: {
@@ -91,7 +91,7 @@ holdingSchema.set("toJSON", { virtuals: true });
 holdingSchema.set("toObject", { virtuals: true });
 
 // ── Indexes ──────────────────────────────────────────────────────────────────
-holdingSchema.index({ userId: 1, platform: 1 });
+holdingSchema.index({ userId: 1, exchange: 1 });
 holdingSchema.index({ userId: 1, ticker: 1 });
 
 export default mongoose.model("Holding", holdingSchema);

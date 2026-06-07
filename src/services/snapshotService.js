@@ -5,11 +5,11 @@ import User from "../models/User.js";
 import { getPrices } from "./priceService.js";
 import { getFxRates, toAUD } from "./fxService.js";
 
-const PLATFORM_META = {
-  CommBank:      { key: "commbank",      currency: "AUD" },
-  CommSecPocket: { key: "commsecpocket", currency: "AUD" },
-  Webull:        { key: "webull",        currency: "USD" },
-  Meroshare:     { key: "meroshare",     currency: "NPR" },
+const MARKET_META = {
+  ASX:    { currency: "AUD" },
+  NYSE:   { currency: "USD" },
+  NASDAQ: { currency: "USD" },
+  NEPSE:  { currency: "NPR" },
 };
 
 export const takeSnapshotForUser = async (userId) => {
@@ -33,24 +33,24 @@ export const takeSnapshotForUser = async (userId) => {
     getFxRates(user?.baseCurrency || "AUD"),
   ]);
 
-  // Group by platform
+  // Group by market (exchange)
   const grouped = {};
   for (const h of holdings) {
-    if (!grouped[h.platform]) grouped[h.platform] = [];
-    grouped[h.platform].push(h);
+    if (!grouped[h.exchange]) grouped[h.exchange] = [];
+    grouped[h.exchange].push(h);
   }
 
   let totalValueAUD    = 0;
   let totalInvestedAUD = 0;
-  const platforms      = {};
+  const markets        = {};
 
-  for (const [platform, platformHoldings] of Object.entries(grouped)) {
-    const meta     = PLATFORM_META[platform];
+  for (const [market, marketHoldings] of Object.entries(grouped)) {
+    const meta     = MARKET_META[market];
     const currency = meta?.currency || "AUD";
-    let platformValue    = 0;
-    let platformInvested = 0;
+    let marketValue    = 0;
+    let marketInvested = 0;
 
-    for (const h of platformHoldings) {
+    for (const h of marketHoldings) {
       const priceData    = prices[`${h.exchange}:${h.ticker}`];
       const qty          = parseFloat(h.qty);
       const buyPrice     = parseFloat(h.buyPrice);
@@ -63,19 +63,17 @@ export const takeSnapshotForUser = async (userId) => {
       const value    = qty * currentPrice;
       const invested = h.isFreeAllotment ? 0 : qty * buyPrice;
 
-      platformValue    += value;
-      platformInvested += invested;
+      marketValue    += value;
+      marketInvested += invested;
     }
 
-    totalValueAUD    += toAUD(platformValue,    currency, fxRates);
-    totalInvestedAUD += toAUD(platformInvested, currency, fxRates);
+    totalValueAUD    += toAUD(marketValue,    currency, fxRates);
+    totalInvestedAUD += toAUD(marketInvested, currency, fxRates);
 
-    if (meta) {
-      platforms[meta.key] = {
-        value:    parseFloat(platformValue.toFixed(2)),
-        currency,
-      };
-    }
+    markets[market.toLowerCase()] = {
+      value:    parseFloat(marketValue.toFixed(2)),
+      currency,
+    };
   }
 
   // Midnight UTC today as the snapshot date
@@ -90,7 +88,7 @@ export const takeSnapshotForUser = async (userId) => {
       date,
       totalValueAUD:    parseFloat(totalValueAUD.toFixed(2)),
       totalInvestedAUD: parseFloat(totalInvestedAUD.toFixed(2)),
-      platforms,
+      markets,
     },
     { upsert: true, returnDocument: "after" }
   );
