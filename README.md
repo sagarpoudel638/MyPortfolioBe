@@ -2,6 +2,26 @@
 
 Node.js/Express REST API for the MyPortfolio app. Handles authentication, portfolio holdings, price data, FX rates, watchlists, snapshots, and dashboard aggregations.
 
+## About
+
+MyPortfolio is a personal investment portfolio tracker that consolidates holdings across multiple brokerage platforms — Australian (CommBank, CommSec Pocket), US (Webull), and Nepali (Meroshare/NEPSE) — into a single dashboard. It fetches live prices, converts everything into a chosen base currency, and tracks portfolio performance over time.
+
+## Features
+
+- **Multi-platform portfolio tracking** — supports CommBank, CommSec Pocket (ASX), Webull (US markets), and Meroshare (NEPSE) in one place
+- **Live price data** — fetches real-time and end-of-day prices via Tiingo (US/ASX), Yahoo Finance, and a NEPSE web scraper
+- **FX conversion** — converts holdings in USD and NPR to a user-selected base currency (default AUD) using live exchange rates
+- **Dashboard aggregation** — per-platform and overall portfolio summary with invested amount, current value, profit/loss, and return %
+- **52-week high/low & day change** — shown per holding where available
+- **Manual price override** — holdings can have a manually set current price (useful for illiquid or unlisted assets)
+- **Free allotment support** — holdings marked as free allotments are excluded from cost basis calculations
+- **Daily snapshots** — cron job runs nightly to save a portfolio value snapshot per user, enabling historical P&L charting
+- **Watchlist** — track tickers with live prices without adding them as holdings
+- **JWT authentication** — access + refresh token flow with automatic token rotation
+- **Email verification & password reset** — full auth lifecycle via Gmail/Nodemailer
+- **Price caching** — prices cached in MongoDB with configurable TTL to reduce external API calls
+- **Per-user settings** — base currency preference, stored per account
+
 ## Tech Stack
 
 - **Runtime:** Node.js (ESM)
