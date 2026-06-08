@@ -1,21 +1,17 @@
 // services/emailService.js
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// The "from" address must be a domain you've verified in Resend.
+// Set RESEND_FROM in your .env, e.g. "PortfolioTracker <noreply@yourdomain.com>"
+const FROM = "Finance Tracker <noreply@itsmesagar.com>";
 
 export const sendVerificationEmail = async (toEmail, name, token) => {
-  // Create transporter inside the function — guarantees env vars are loaded
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    family: 4, // ← force IPv4
-  });
-
   const verifyUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
 
-  await transporter.sendMail({
-    from: `"PortfolioTracker" <${process.env.EMAIL_USER}>`,
+  await resend.emails.send({
+    from: FROM,
     to: toEmail,
     subject: "Verify your PortfolioTracker account",
     html: `
@@ -41,19 +37,10 @@ export const sendVerificationEmail = async (toEmail, name, token) => {
 };
 
 export const sendPasswordResetEmail = async (toEmail, name, token) => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    family: 4, // ← force IPv4
-  });
-
   const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
 
-  await transporter.sendMail({
-    from: `"PortfolioTracker" <${process.env.EMAIL_USER}>`,
+  await resend.emails.send({
+    from: FROM,
     to: toEmail,
     subject: "Reset your PortfolioTracker password",
     html: `
