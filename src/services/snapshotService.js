@@ -4,6 +4,7 @@ import Snapshot from "../models/Snapshot.js";
 import User from "../models/User.js";
 import { getPrices } from "./priceService.js";
 import { getFxRates, toAUD } from "./fxService.js";
+import { checkPriceAlerts } from "./alertCheckerService.js";
 
 const MARKET_META = {
   ASX:    { currency: "AUD" },
@@ -108,5 +109,13 @@ export const takeSnapshotsForAllUsers = async () => {
     } catch (err) {
       console.error(`[Snapshot] Failed for ${user.email}:`, err.message);
     }
+  }
+
+  // Check price alerts after all snapshots (prices are warm in cache)
+  try {
+    await checkPriceAlerts();
+    console.log("[AlertChecker] Done");
+  } catch (err) {
+    console.error("[AlertChecker] Failed:", err.message);
   }
 };

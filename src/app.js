@@ -10,6 +10,7 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import fxRoutes from "./routes/fxRoutes.js";
 import snapshotRoutes from "./routes/snapshotRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use("/api/test", testRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/fx", fxRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 
 export default app;
