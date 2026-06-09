@@ -163,10 +163,7 @@ export const verifyEmail = async (req, res) => {
     user.verifyTokenExpiry = null;
     await user.save();
 
-    // Redirect to login with success flag
-    return res.redirect(
-      `${process.env.CLIENT_URL}/login?verified=true`
-    );
+    return res.json({ message: "Email verified successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
