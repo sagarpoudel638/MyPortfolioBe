@@ -7,6 +7,7 @@ import {
   parseMeroshareJoined,
   parseCommSec,
   parseWebull,
+  parseWebullMultiple,
   parseNative,
 } from "../services/csvParsers.js";
 
@@ -17,18 +18,18 @@ import {
 //   source   (optional) — "meroshare" | "commsec" | "webull" | "native"
 export const importHoldings = async (req, res) => {
   try {
-    // Support both upload.single("file") and upload.fields([...])
-    const primaryFile = req.files?.file?.[0] ?? req.file;
-    if (!primaryFile) {
+    const primaryFiles = req.files?.file ?? (req.file ? [req.file] : []);
+    if (!primaryFiles.length) {
       return res.status(400).json({ message: "No CSV file uploaded." });
     }
 
-    const csvText     = primaryFile.buffer.toString("utf-8");
-    const waccFile    = req.files?.fileWacc?.[0];
-    const waccCsvText = waccFile ? waccFile.buffer.toString("utf-8") : null;
+    const csvTexts        = primaryFiles.map((f) => f.buffer.toString("utf-8"));
+    const csvText         = csvTexts[0];               // use first file for format detection
+    const waccFile        = req.files?.fileWacc?.[0];
+    const waccCsvText     = waccFile ? waccFile.buffer.toString("utf-8") : null;
 
     // Detect format of primary file
-    const detectedFormat = detectFormat(csvText);
+    const detectedFormat  = detectFormat(csvText);
 
     // Parse — choose the right strategy
     let parsed;
@@ -56,8 +57,16 @@ export const importHoldings = async (req, res) => {
         parsed = parseCommSec(csvText);
         source = "commsec";
       } else if (detectedFormat === "webull" || source === "webull") {
-        parsed = parseWebull(csvText);
-        source = "webull";
+        parsed = csvTexts.length > 1
+          ? parseWebullMultiple(csvTexts)
+          : parseWebull(csvText);
+        source = `webull (${csvTexts.length} file${csvTexts.length > 1 ? "s" : ""} combined)`;
+        // Also validate all extra files are webull format
+        for (let i = 1; i < csvTexts.length; i++) {
+          if (detectFormat(csvTexts[i]) !== "webull") {
+            return res.status(400).json({ message: `File ${i + 1} does not appear to be a Webull trade record CSV.` });
+          }
+        }
       } else if (detectedFormat === "native" || source === "native") {
         parsed = parseNative(csvText);
         source = "native";

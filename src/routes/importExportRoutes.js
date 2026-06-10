@@ -21,11 +21,11 @@ const upload = multer({
 
 router.use(protect);
 
-// Accept primary file + optional WACC report (Meroshare two-file import)
+// Accept up to 10 primary files (Webull multi-period) + optional WACC report
 router.post("/import",
   upload.fields([
-    { name: "file",     maxCount: 1 },
-    { name: "fileWacc", maxCount: 1 },
+    { name: "file",     maxCount: 10 },
+    { name: "fileWacc", maxCount: 1  },
   ]),
   importHoldings,
 );

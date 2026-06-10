@@ -306,6 +306,25 @@ export function parseWebull(csvText) {
   return holdings;
 }
 
+// ── 3b. Webull — multiple CSV files (24-month export limit workaround) ───────
+// Concatenates all trade history files, strips duplicate header rows,
+// then runs the same netting logic as parseWebull.
+export function parseWebullMultiple(csvTexts) {
+  if (!csvTexts || csvTexts.length === 0) return [];
+  if (csvTexts.length === 1) return parseWebull(csvTexts[0]);
+
+  // Keep header from first file, strip it from the rest.
+  // Normalise line endings first so \r doesn't corrupt column values.
+  const combined = csvTexts
+    .map((text, i) => {
+      const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter((l) => l.trim());
+      return i === 0 ? lines.join("\n") : lines.slice(1).join("\n");
+    })
+    .join("\n");
+
+  return parseWebull(combined);
+}
+
 // ── 4. Native format (our own export) ────────────────────────────────────────
 // ticker,name,exchange,currency,qty,buyPrice,purchaseDate,broker,notes,isFreeAllotment,isTracking
 export function parseNative(csvText) {
