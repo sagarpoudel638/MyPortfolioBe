@@ -65,7 +65,18 @@ verifyTokenExpiry: {
 resetTokenExpiry: {
   type: Date,
   default: null,
-}
+},
+
+// Account lockout — tracks consecutive failed login attempts
+failedLoginAttempts: {
+  type: Number,
+  default: 0,
+},
+
+lockedUntil: {
+  type: Date,
+  default: null,
+},
   },
   { timestamps: true }
 );

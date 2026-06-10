@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import helmet from "helmet";
+import mongoSanitize from "express-mongo-sanitize";
+import { generalLimiter } from "./middleware/rateLimiter.js";
 import priceRoutes from "./routes/priceRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import holdingRoutes from "./routes/holdingRoutes.js";
@@ -14,14 +17,11 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
-app.use(morgan("dev"));
-
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
   : ["http://localhost:5173"];
 
+app.use(helmet());                          // security headers (CSP, HSTS, etc.)
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -32,6 +32,10 @@ app.use(cors({
   },
   credentials: true,
 }));
+app.use(express.json({ limit: "50kb" }));   // reject oversized JSON bodies
+app.use(mongoSanitize());                   // strip $ and . from req.body/query/params
+app.use(morgan("dev"));
+app.use(generalLimiter);                    // global 200 req/15min per IP
 
 // public routes
 app.use("/api/auth", authRoutes);

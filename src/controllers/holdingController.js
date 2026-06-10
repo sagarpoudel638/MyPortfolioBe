@@ -1,6 +1,28 @@
 // controllers/holdingController.js
 import Holding from "../models/Holding.js";
 
+// ── Validation ──────────────────────────────────────────────────────────────
+const VALID_EXCHANGES = ["ASX", "NYSE", "NASDAQ", "NEPSE"];
+const VALID_CURRENCIES = ["AUD", "USD", "NPR"];
+
+const validateHoldingInput = ({ exchange, currency, ticker, name, qty, buyPrice }) => {
+  if (!exchange || !VALID_EXCHANGES.includes(exchange))
+    return `exchange must be one of: ${VALID_EXCHANGES.join(", ")}.`;
+  if (!currency || !VALID_CURRENCIES.includes(currency))
+    return `currency must be one of: ${VALID_CURRENCIES.join(", ")}.`;
+  if (!ticker || typeof ticker !== "string" || ticker.trim().length === 0 || ticker.trim().length > 20)
+    return "ticker is required and must be ≤ 20 characters.";
+  if (!name || typeof name !== "string" || name.trim().length === 0 || name.trim().length > 100)
+    return "name is required and must be ≤ 100 characters.";
+  const qtyNum = Number(qty);
+  if (isNaN(qtyNum) || qtyNum <= 0)
+    return "qty must be a positive number.";
+  const priceNum = Number(buyPrice);
+  if (isNaN(priceNum) || priceNum < 0)
+    return "buyPrice must be a non-negative number.";
+  return null;
+};
+
 // ── Helper: parse Decimal128 fields for clean JSON output ──────────────────
 const parseHolding = (holding) => {
   const h = holding.toObject({ virtuals: true });
@@ -67,6 +89,9 @@ export const createHolding = async (req, res) => {
       notes,
     } = req.body;
 
+    const validationError = validateHoldingInput({ exchange, currency, ticker, name, qty, buyPrice });
+    if (validationError) return res.status(400).json({ message: validationError });
+
     const holding = await Holding.create({
       userId: req.user._id,
       broker: broker || "",
@@ -120,6 +145,18 @@ export const updateHolding = async (req, res) => {
       "manualCurrentPrice",
       "notes",
     ];
+
+    // Validate fields being updated
+    const merged = {
+      exchange: req.body.exchange ?? holding.exchange,
+      currency: req.body.currency ?? holding.currency,
+      ticker:   req.body.ticker   ?? holding.ticker,
+      name:     req.body.name     ?? holding.name,
+      qty:      req.body.qty      ?? holding.qty,
+      buyPrice: req.body.buyPrice ?? holding.buyPrice,
+    };
+    const validationError = validateHoldingInput(merged);
+    if (validationError) return res.status(400).json({ message: validationError });
 
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {

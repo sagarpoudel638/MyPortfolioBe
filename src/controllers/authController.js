@@ -9,12 +9,28 @@ import {
 } from "../utils/generateTokens.js";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../services/emailService.js";
 
+// ── Validation helpers ──────────────────────────────────────────────────────
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const validateRegisterInput = ({ name, email, password }) => {
+  if (!name || typeof name !== "string" || name.trim().length < 2 || name.trim().length > 50)
+    return "Name must be between 2 and 50 characters.";
+  if (!email || !EMAIL_RE.test(email))
+    return "A valid email address is required.";
+  if (!password || password.length < 8 || password.length > 128)
+    return "Password must be between 8 and 128 characters.";
+  return null;
+};
+
 // REGISTER
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    const userExists = await User.findOne({ email });
+    const validationError = validateRegisterInput({ name, email, password });
+    if (validationError) return res.status(400).json({ message: validationError });
+
+    const userExists = await User.findOne({ email: email.toLowerCase().trim() });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -26,8 +42,8 @@ export const registerUser = async (req, res) => {
     const verifyTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const user = await User.create({
-      name,
-      email,
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
       password: hashedPassword,
       verifyToken,
       verifyTokenExpiry,
@@ -35,7 +51,7 @@ export const registerUser = async (req, res) => {
     });
 
     // Send verification email
-    await sendVerificationEmail(email, name, verifyToken);
+    await sendVerificationEmail(email.toLowerCase().trim(), name.trim(), verifyToken);
 
     res.status(201).json({
       message: "Registration successful. Please check your email to verify your account.",
@@ -45,23 +61,56 @@ export const registerUser = async (req, res) => {
   }
 };
 
+// ── Lockout constants ───────────────────────────────────────────────────────
+const MAX_FAILED_ATTEMPTS = 10;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
 // LOGIN
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required." });
+    }
+
+    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
     if (!user) {
+      // Don't reveal whether the account exists
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Check lockout
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.lockedUntil - Date.now()) / 60000);
+      return res.status(429).json({
+        message: `Account temporarily locked. Try again in ${minutesLeft} minute${minutesLeft !== 1 ? "s" : ""}.`,
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      // Increment failed attempts
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+        user.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+        user.failedLoginAttempts = 0;
+        await user.save();
+        return res.status(429).json({
+          message: "Too many failed attempts. Account locked for 15 minutes.",
+        });
+      }
+      await user.save();
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // Successful login — reset lockout counters
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+
     // Block unverified users
     if (!user.isVerified) {
+      await user.save();
       return res.status(403).json({
         message: "Please verify your email before logging in.",
         unverified: true,
