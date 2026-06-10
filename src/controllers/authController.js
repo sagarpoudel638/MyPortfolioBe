@@ -90,27 +90,27 @@ export const loginUser = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      // Increment failed attempts
-      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-      if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
-        user.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
-        user.failedLoginAttempts = 0;
-        await user.save();
+      // Use updateOne to avoid triggering full document validation on failure path
+      const attempts = (user.failedLoginAttempts || 0) + 1;
+      if (attempts >= MAX_FAILED_ATTEMPTS) {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { lockedUntil: new Date(Date.now() + LOCKOUT_DURATION_MS), failedLoginAttempts: 0 } }
+        );
         return res.status(429).json({
           message: "Too many failed attempts. Account locked for 15 minutes.",
         });
       }
-      await user.save();
+      await User.updateOne({ _id: user._id }, { $set: { failedLoginAttempts: attempts } });
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Successful login — reset lockout counters
-    user.failedLoginAttempts = 0;
-    user.lockedUntil = null;
-
-    // Block unverified users
+    // Successful login — reset lockout counters then save refresh token in one write
     if (!user.isVerified) {
-      await user.save();
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { failedLoginAttempts: 0, lockedUntil: null } }
+      );
       return res.status(403).json({
         message: "Please verify your email before logging in.",
         unverified: true,
@@ -119,6 +119,8 @@ export const loginUser = async (req, res) => {
 
     const rawRefresh = generateRefreshToken();
     user.refreshTokenHash = hashToken(rawRefresh);
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
     await user.save();
 
     res.json({

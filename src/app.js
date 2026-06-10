@@ -21,7 +21,11 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
   : ["http://localhost:5173"];
 
-app.use(helmet());                          // security headers (CSP, HSTS, etc.)
+app.use(helmet({
+  contentSecurityPolicy: false,             // not needed for a JSON API
+  crossOriginEmbedderPolicy: false,         // not needed for a JSON API
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // allow FE to read responses
+}));                                        // keeps HSTS, X-Frame-Options, noSniff, etc.
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
