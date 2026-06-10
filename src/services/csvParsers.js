@@ -21,8 +21,12 @@ const toDate = (str) => {
 // ── Auto-detect format from CSV text ────────────────────────────────────────
 export function detectFormat(csvText) {
   const head = csvText.slice(0, 500).toLowerCase();
-  if (head.includes("credit quantity") || head.includes("scrip") && head.includes("balance after"))
-    return "meroshare";
+  if (head.includes("wacc rate") || head.includes("wacc calculated"))
+    return "meroshare_wacc";
+  if (head.includes("current balance") && head.includes("free balance") && head.includes("scrip"))
+    return "meroshare_myshares";
+  if (head.includes("credit quantity") || (head.includes("scrip") && head.includes("balance after")))
+    return "meroshare_txn";
   if (head.includes("avail units") || head.includes("account number"))
     return "commsec";
   if (head.includes("buy/sell") && head.includes("trade price"))
@@ -32,7 +36,80 @@ export function detectFormat(csvText) {
   return null;
 }
 
-// ── 1. Meroshare (NEPSE) ─────────────────────────────────────────────────────
+// ── 1a. Meroshare — My Shares + WACC Report (preferred, gives real buy prices) ─
+// My Shares:   S.N, Scrip, Current Balance, ...
+// WACC Report: S.N, Demat, Scrip Name, WACC Calculated Quantity, WACC Rate, ...
+// Strategy: My Shares = authoritative current holdings; WACC Report = buy price lookup.
+export function parseMeroshareJoined(mySharesCsv, waccCsv) {
+  // Parse My Shares — current holdings
+  const shareRows = parse(mySharesCsv, { columns: true, skip_empty_lines: true, trim: true });
+  // Parse WACC Report — build ticker→waccRate map
+  const waccRows  = parse(waccCsv,     { columns: true, skip_empty_lines: true, trim: true });
+
+  const waccMap = {};
+  for (const row of waccRows) {
+    const ticker = (row["Scrip Name"] || "").trim().toUpperCase();
+    const rate   = toNum(row["WACC Rate"]);
+    if (ticker) waccMap[ticker] = rate;
+  }
+
+  const holdings = [];
+  for (const row of shareRows) {
+    const ticker     = (row["Scrip"] || "").trim().toUpperCase();
+    const currentQty = toNum(row["Current Balance"]);
+    if (!ticker || currentQty <= 0) continue;
+
+    const buyPrice = waccMap[ticker] ?? null;
+    const warnings = buyPrice === null
+      ? [`${ticker} not found in WACC Report — buy price set to 0, please update manually.`]
+      : [];
+
+    holdings.push({
+      ticker,
+      name:            ticker,
+      exchange:        "NEPSE",
+      currency:        "NPR",
+      qty:             currentQty,
+      buyPrice:        buyPrice ?? 0,
+      purchaseDate:    new Date(),   // My Shares has no purchase date
+      broker:          "Meroshare",
+      notes:           buyPrice === null ? "⚠ Buy price not found in WACC Report." : "",
+      isFreeAllotment: false,
+      isTracking:      true,
+      warnings,
+    });
+  }
+  return holdings;
+}
+
+// ── 1b. Meroshare — My Shares only (no WACC) ─────────────────────────────────
+// Used when user uploads only the My Shares CSV.
+export function parseMeroshareMyShares(csvText) {
+  const rows = parse(csvText, { columns: true, skip_empty_lines: true, trim: true });
+  const holdings = [];
+  for (const row of rows) {
+    const ticker  = (row["Scrip"] || "").trim().toUpperCase();
+    const qty     = toNum(row["Current Balance"]);
+    if (!ticker || qty <= 0) continue;
+    holdings.push({
+      ticker,
+      name:            ticker,
+      exchange:        "NEPSE",
+      currency:        "NPR",
+      qty,
+      buyPrice:        0,
+      purchaseDate:    new Date(),
+      broker:          "Meroshare",
+      notes:           "⚠ Buy price not available — upload WACC Report for automatic prices.",
+      isFreeAllotment: false,
+      isTracking:      true,
+      warnings:        ["Buy price set to 0 — re-import with a WACC Report CSV for automatic prices."],
+    });
+  }
+  return holdings;
+}
+
+// ── 1c. Meroshare — Transaction History (legacy fallback) ────────────────────
 // Transaction history: S.N, Scrip, Transaction Date, Credit Quantity,
 //                      Debit Quantity, Balance After Transaction, History Description
 // Strategy: group by Scrip, latest row → current balance; no price data.

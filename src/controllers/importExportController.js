@@ -3,43 +3,69 @@ import Holding from "../models/Holding.js";
 import {
   detectFormat,
   parseMeroshare,
+  parseMeroshareMyShares,
+  parseMeroshareJoined,
   parseCommSec,
   parseWebull,
   parseNative,
 } from "../services/csvParsers.js";
 
-const PARSERS = {
-  meroshare: parseMeroshare,
-  commsec:   parseCommSec,
-  webull:    parseWebull,
-  native:    parseNative,
-};
-
 // ── POST /api/import ─────────────────────────────────────────────────────────
-// Accepts multipart/form-data: file (csv) + optional field "source"
+// Accepts multipart/form-data:
+//   file     (required) — primary CSV
+//   fileWacc (optional) — Meroshare WACC Report CSV (when primary is My Shares)
+//   source   (optional) — "meroshare" | "commsec" | "webull" | "native"
 export const importHoldings = async (req, res) => {
   try {
-    if (!req.file) {
+    // Support both upload.single("file") and upload.fields([...])
+    const primaryFile = req.files?.file?.[0] ?? req.file;
+    if (!primaryFile) {
       return res.status(400).json({ message: "No CSV file uploaded." });
     }
 
-    const csvText = req.file.buffer.toString("utf-8");
+    const csvText     = primaryFile.buffer.toString("utf-8");
+    const waccFile    = req.files?.fileWacc?.[0];
+    const waccCsvText = waccFile ? waccFile.buffer.toString("utf-8") : null;
 
-    // Determine parser: prefer explicit "source" field, fall back to auto-detect
-    let source = (req.body.source || "").toLowerCase().trim();
-    if (!source || !PARSERS[source]) {
-      source = detectFormat(csvText);
-    }
-    if (!source || !PARSERS[source]) {
-      return res.status(400).json({
-        message: "Could not detect CSV format. Please specify source: meroshare, commsec, webull, or native.",
-      });
-    }
+    // Detect format of primary file
+    const detectedFormat = detectFormat(csvText);
 
-    // Parse
+    // Parse — choose the right strategy
     let parsed;
+    let source = (req.body.source || "").toLowerCase().trim() || detectedFormat || "";
+
     try {
-      parsed = PARSERS[source](csvText);
+      // Meroshare: My Shares + optional WACC
+      if (detectedFormat === "meroshare_myshares" || source === "meroshare") {
+        if (waccCsvText) {
+          // Validate the second file is actually a WACC report
+          const waccFmt = detectFormat(waccCsvText);
+          if (waccFmt !== "meroshare_wacc") {
+            return res.status(400).json({ message: "Second file does not appear to be a Meroshare WACC Report." });
+          }
+          parsed = parseMeroshareJoined(csvText, waccCsvText);
+          source = "meroshare (My Shares + WACC)";
+        } else {
+          parsed = parseMeroshareMyShares(csvText);
+          source = "meroshare (My Shares only)";
+        }
+      } else if (detectedFormat === "meroshare_txn") {
+        parsed = parseMeroshare(csvText);
+        source = "meroshare (Transaction History)";
+      } else if (detectedFormat === "commsec" || source === "commsec") {
+        parsed = parseCommSec(csvText);
+        source = "commsec";
+      } else if (detectedFormat === "webull" || source === "webull") {
+        parsed = parseWebull(csvText);
+        source = "webull";
+      } else if (detectedFormat === "native" || source === "native") {
+        parsed = parseNative(csvText);
+        source = "native";
+      } else {
+        return res.status(400).json({
+          message: "Could not detect CSV format. Please select source: meroshare, commsec, webull, or native.",
+        });
+      }
     } catch (err) {
       return res.status(400).json({ message: `Parse error: ${err.message}` });
     }

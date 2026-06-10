@@ -21,7 +21,14 @@ const upload = multer({
 
 router.use(protect);
 
-router.post("/import",  upload.single("file"), importHoldings);
+// Accept primary file + optional WACC report (Meroshare two-file import)
+router.post("/import",
+  upload.fields([
+    { name: "file",     maxCount: 1 },
+    { name: "fileWacc", maxCount: 1 },
+  ]),
+  importHoldings,
+);
 router.get("/export",                          exportHoldings);
 
 export default router;
