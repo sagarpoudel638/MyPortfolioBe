@@ -5,7 +5,7 @@ import Holding from "../models/Holding.js";
 const VALID_EXCHANGES = ["ASX", "NYSE", "NASDAQ", "NEPSE"];
 const VALID_CURRENCIES = ["AUD", "USD", "NPR"];
 
-const validateHoldingInput = ({ exchange, currency, ticker, name, qty, buyPrice }) => {
+const validateHoldingInput = ({ exchange, currency, ticker, name, qty, buyPrice, purchaseDate }) => {
   if (!exchange || !VALID_EXCHANGES.includes(exchange))
     return `exchange must be one of: ${VALID_EXCHANGES.join(", ")}.`;
   if (!currency || !VALID_CURRENCIES.includes(currency))
@@ -20,6 +20,13 @@ const validateHoldingInput = ({ exchange, currency, ticker, name, qty, buyPrice 
   const priceNum = Number(buyPrice);
   if (isNaN(priceNum) || priceNum < 0)
     return "buyPrice must be a non-negative number.";
+  if (purchaseDate) {
+    const d = new Date(purchaseDate);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // allow today
+    if (!isNaN(d) && d > today)
+      return "Purchase date cannot be in the future.";
+  }
   return null;
 };
 
@@ -89,7 +96,7 @@ export const createHolding = async (req, res) => {
       notes,
     } = req.body;
 
-    const validationError = validateHoldingInput({ exchange, currency, ticker, name, qty, buyPrice });
+    const validationError = validateHoldingInput({ exchange, currency, ticker, name, qty, buyPrice, purchaseDate });
     if (validationError) return res.status(400).json({ message: validationError });
 
     const normalizedTicker = ticker.trim().toUpperCase();
@@ -176,12 +183,13 @@ export const updateHolding = async (req, res) => {
 
     // Validate fields being updated
     const merged = {
-      exchange: req.body.exchange ?? holding.exchange,
-      currency: req.body.currency ?? holding.currency,
-      ticker:   req.body.ticker   ?? holding.ticker,
-      name:     req.body.name     ?? holding.name,
-      qty:      req.body.qty      ?? holding.qty,
-      buyPrice: req.body.buyPrice ?? holding.buyPrice,
+      exchange:     req.body.exchange     ?? holding.exchange,
+      currency:     req.body.currency     ?? holding.currency,
+      ticker:       req.body.ticker       ?? holding.ticker,
+      name:         req.body.name         ?? holding.name,
+      qty:          req.body.qty          ?? holding.qty,
+      buyPrice:     req.body.buyPrice     ?? holding.buyPrice,
+      purchaseDate: req.body.purchaseDate ?? holding.purchaseDate,
     };
     const validationError = validateHoldingInput(merged);
     if (validationError) return res.status(400).json({ message: validationError });
